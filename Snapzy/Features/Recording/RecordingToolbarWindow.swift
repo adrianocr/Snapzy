@@ -22,15 +22,15 @@ enum RecordingOutputMode: String, CaseIterable {
 
   var displayName: String {
     switch self {
-    case .video: return L10n.RecordingToolbar.outputVideo
-    case .gif: return L10n.RecordingToolbar.outputGIF
+    case .video: L10n.RecordingToolbar.outputVideo
+    case .gif: L10n.RecordingToolbar.outputGIF
     }
   }
 
   var iconName: String {
     switch self {
-    case .video: return "video"
-    case .gif: return "photo.on.rectangle"
+    case .video: "video"
+    case .gif: "photo.on.rectangle"
     }
   }
 }
@@ -72,6 +72,18 @@ enum RecordingToolbarPreferences {
 
   static func cameraDeviceID(defaults: UserDefaults = .standard) -> String {
     RecordingCameraDeviceProvider.storedDeviceID(defaults: defaults)
+  }
+
+  static func cameraShape(defaults: UserDefaults = .standard) -> RecordingCameraShape {
+    RecordingCameraSettingsProvider.storedShape(defaults: defaults)
+  }
+
+  static func cameraSize(defaults: UserDefaults = .standard) -> RecordingCameraSize {
+    RecordingCameraSettingsProvider.storedSize(defaults: defaults)
+  }
+
+  static func cameraMirrored(defaults: UserDefaults = .standard) -> Bool {
+    RecordingCameraSettingsProvider.storedMirrored(defaults: defaults)
   }
 
   static func outputMode(defaults: UserDefaults = .standard) -> RecordingOutputMode {
@@ -151,6 +163,9 @@ final class RecordingToolbarState: ObservableObject {
   @Published var microphoneDeviceID: String
   @Published var captureCamera: Bool
   @Published var cameraDeviceID: String
+  @Published var cameraShape: RecordingCameraShape
+  @Published var cameraSize: RecordingCameraSize
+  @Published var cameraMirrored: Bool
   @Published var captureMode: RecordingCaptureMode
   @Published var outputMode: RecordingOutputMode
   @Published var showCursor: Bool
@@ -162,19 +177,22 @@ final class RecordingToolbarState: ObservableObject {
   var onCaptureModeChanged: ((RecordingCaptureMode) -> Void)?
 
   init() {
-    self.selectedFormat = RecordingToolbarPreferences.selectedFormat()
-    self.selectedQuality = RecordingToolbarPreferences.selectedQuality()
-    self.captureAudio = RecordingToolbarPreferences.captureAudio()
-    self.captureMicrophone = RecordingToolbarPreferences.captureMicrophone()
-    self.microphoneDeviceID = RecordingToolbarPreferences.microphoneDeviceID()
-    self.captureCamera = RecordingToolbarPreferences.captureCamera()
-    self.cameraDeviceID = RecordingToolbarPreferences.cameraDeviceID()
-    self.captureMode = .area
-    self.outputMode = RecordingToolbarPreferences.outputMode()
-    self.showCursor = RecordingToolbarPreferences.showCursor()
-    self.highlightClicks = RecordingToolbarPreferences.highlightClicks()
-    self.showKeystrokes = RecordingToolbarPreferences.showKeystrokes()
-    self.dimNonSelectedArea = RecordingToolbarPreferences.dimNonSelectedArea()
+    selectedFormat = RecordingToolbarPreferences.selectedFormat()
+    selectedQuality = RecordingToolbarPreferences.selectedQuality()
+    captureAudio = RecordingToolbarPreferences.captureAudio()
+    captureMicrophone = RecordingToolbarPreferences.captureMicrophone()
+    microphoneDeviceID = RecordingToolbarPreferences.microphoneDeviceID()
+    captureCamera = RecordingToolbarPreferences.captureCamera()
+    cameraDeviceID = RecordingToolbarPreferences.cameraDeviceID()
+    cameraShape = RecordingToolbarPreferences.cameraShape()
+    cameraSize = RecordingToolbarPreferences.cameraSize()
+    cameraMirrored = RecordingToolbarPreferences.cameraMirrored()
+    captureMode = .area
+    outputMode = RecordingToolbarPreferences.outputMode()
+    showCursor = RecordingToolbarPreferences.showCursor()
+    highlightClicks = RecordingToolbarPreferences.highlightClicks()
+    showKeystrokes = RecordingToolbarPreferences.showKeystrokes()
+    dimNonSelectedArea = RecordingToolbarPreferences.dimNonSelectedArea()
   }
 }
 
@@ -182,7 +200,6 @@ final class RecordingToolbarState: ObservableObject {
 
 @MainActor
 final class RecordingToolbarWindow: NSWindow {
-
   private var anchorRect: CGRect
   private var mode: RecordingToolbarMode = .preRecord
   private var hostingView: NSHostingView<AnyView>?
@@ -207,45 +224,68 @@ final class RecordingToolbarWindow: NSWindow {
   let state = RecordingToolbarState()
   let annotationState = RecordingAnnotationState()
 
-  // Expose state properties for external access (read/write)
+  /// Expose state properties for external access (read/write)
   var selectedFormat: VideoFormat {
     get { state.selectedFormat }
     set { state.selectedFormat = newValue }
   }
+
   var selectedQuality: VideoQuality {
     get { state.selectedQuality }
     set { state.selectedQuality = newValue }
   }
+
   var captureAudio: Bool {
     get { state.captureAudio }
     set { state.captureAudio = newValue }
   }
+
   var captureMicrophone: Bool {
     get { state.captureMicrophone }
     set { state.captureMicrophone = newValue }
   }
+
   var microphoneDeviceID: String {
     get { state.microphoneDeviceID }
     set { state.microphoneDeviceID = newValue }
   }
+
   var captureCamera: Bool {
     get { state.captureCamera }
     set { state.captureCamera = newValue }
   }
+
   var cameraDeviceID: String {
     get { state.cameraDeviceID }
     set { state.cameraDeviceID = newValue }
   }
+
+  var cameraShape: RecordingCameraShape {
+    get { state.cameraShape }
+    set { state.cameraShape = newValue }
+  }
+
+  var cameraSize: RecordingCameraSize {
+    get { state.cameraSize }
+    set { state.cameraSize = newValue }
+  }
+
+  var cameraMirrored: Bool {
+    get { state.cameraMirrored }
+    set { state.cameraMirrored = newValue }
+  }
+
   var captureMode: RecordingCaptureMode {
     get { state.captureMode }
     set { state.captureMode = newValue }
   }
+
   var outputMode: RecordingOutputMode {
     get { state.outputMode }
     set { state.outputMode = newValue }
   }
 
-  // Callback for capture mode changes
+  /// Callback for capture mode changes
   var onCaptureModeChanged: ((RecordingCaptureMode) -> Void)? {
     get { state.onCaptureModeChanged }
     set { state.onCaptureModeChanged = newValue }
@@ -403,7 +443,7 @@ final class RecordingToolbarWindow: NSWindow {
     return NSPointFromString(stored)
   }
 
-  @objc private func recordingToolbarDidMove(_ notification: Notification) {
+  @objc private func recordingToolbarDidMove(_: Notification) {
     guard mode == .recording, isVisible else { return }
     // `didMoveNotification` fires continuously through a drag; debounce so we persist once at rest.
     pendingOriginSaveWorkItem?.cancel()
@@ -510,7 +550,9 @@ final class RecordingToolbarWindow: NSWindow {
     orderFrontRegardless()
   }
 
-  override var canBecomeKey: Bool { true }
+  override var canBecomeKey: Bool {
+    true
+  }
 
   func updateAnchorRect(_ rect: CGRect) {
     anchorRect = rect
